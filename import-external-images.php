@@ -426,9 +426,10 @@ function si_external_image_get_img_tags( $post_id ) {
 	$result = array();
 	preg_match_all( '/<img[^>]* src=[\'"]?([^>\'" ]+)/', $post->post_content, $matches );
 	preg_match_all( '/<a[^>]* href=[\'"]?([^>\'" ]+)/', $post->post_content, $matches2 );
+	preg_match_all( '/<img[^>]* data-src=[\'"]?([^>\'" ]+)/', $post->post_content, $matches3 );
 
-	$matches[0] = array_merge( $matches[0], $matches2[0] );
-	$matches[1] = array_merge( $matches[1], $matches2[1] );
+	$matches[0] = array_merge( $matches[0], $matches2[0], $matches3[0] );
+	$matches[1] = array_merge( $matches[1], $matches2[1], $matches3[1] );
     $total_matches = count( $matches[0] );
 
 	for ( $i = 0; $i < $total_matches; $i ++ ) {
