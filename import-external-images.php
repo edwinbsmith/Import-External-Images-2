@@ -319,7 +319,8 @@ function si_external_image_import_images( $post_id, $force = FALSE ) {
 	// $debugNew = array();
 
 	$count = 0;
-	for ( $i = 0; $i < count( $imgs ); $i ++ ) {
+	$image_total = count( $imgs );
+	for ( $i = 0; $i < $image_total; $i ++ ) {
 		if ( isset( $imgs[ $i ] ) && vr_is_allowed_file( $imgs[ $i ] ) && $count < $images_count_custom ) {
 			$new_img = si_external_image_sideload( $imgs[ $i ], $post_id ); // $new_img = Localhost URI of the downloaded image
 			if ( $new_img ) {
@@ -372,7 +373,7 @@ function si_external_image_sideload( $file, $post_id, $desc = NULL ) {
 		//prepend http/https if necessary (fix for urls that start with //)
 		$downloadUrl = $file;
 		if ( substr( $downloadUrl, 0, 2 ) == '//' ) {
-			$scheme      = ( ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443 ) ? "https" : "http" );
+			$scheme      = ( ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] === 443 ) ? 'https' : 'http' );
 			$downloadUrl = $scheme . ':' . $downloadUrl;
 		}
 
@@ -428,8 +429,9 @@ function si_external_image_get_img_tags( $post_id ) {
 
 	$matches[0] = array_merge( $matches[0], $matches2[0] );
 	$matches[1] = array_merge( $matches[1], $matches2[1] );
+    $total_matches = count( $matches[0] );
 
-	for ( $i = 0; $i < count( $matches[0] ); $i ++ ) {
+	for ( $i = 0; $i < $total_matches; $i ++ ) {
 		$uri        = $matches[1][ $i ];
 		$uriCheck   = strtok( $uri, '?' ); //strip the querystring if it has one
 		$url_parts  = parse_url( $uriCheck );
@@ -497,7 +499,7 @@ function si_external_image_backcatalog() {
 		}
 	}
 
-	if ( $done_message ) {
+	if ( isset( $done_message ) && $done_message ) {
 		echo $before;
 		echo $done_message;
 		echo $resubmit;
