@@ -62,7 +62,7 @@ if ( $posts_count_custom <= 0 || $posts_count_custom >= 501 ) {
 
 require_once ABSPATH . 'wp-admin/includes/file.php';
 require_once ABSPATH . 'wp-admin/includes/media.php';
-require_once './vendor/autoload.php';
+require_once 'vendor/autoload.php';
 
 add_action( 'admin_menu', 'si_external_image_menu' );
 add_action( 'admin_init', 'si_external_image_admin_init' );
@@ -83,11 +83,11 @@ function si_external_image_admin_init() {
 	add_option( 'si_external_image_posts_count_custom', '50' );
 
 	if ( $pagenow == 'post.php' ) {
-		add_action( 'post_submitbox_misc_actions', 'vr_import_external_images_per_post' );
+		add_action( 'post_submitbox_misc_actions', 'si_import_external_images_per_post' );
 		add_action( 'save_post', 'si_external_image_import_images' );
 	}
 
-	add_filter( 'attachment_link', 'vr_force_attachment_links_to_link_to_image', 9, 3 );
+	add_filter( 'attachment_link', 'si_force_attachment_links_to_link_to_image', 9, 3 );
 
 }
 
@@ -146,7 +146,7 @@ function si_external_image_import_all_ajax() {
 
 	global $wpdb;
 
-	$post_id  = intval( $_POST['vr_import_images_post'] );
+	$post_id  = intval( $_POST['si_import_images_post'] );
 	$response = array();
 
 	if ( ! $post_id ) {
@@ -186,7 +186,7 @@ function si_external_image_import_all_ajax() {
  **/
 
 
-function vr_force_attachment_links_to_link_to_image( $link, $id ) {
+function si_force_attachment_links_to_link_to_image( $link, $id ) {
 
 	$object = get_post( $id );
 
@@ -220,7 +220,7 @@ function si_external_image_menu() {
 /*
 * Meta Boxes for hiding pages from main menu
 */
-function vr_import_external_images_per_post() {
+function si_import_external_images_per_post() {
 
 	$external_images     = si_external_image_get_img_tags( $_GET['post'] );
 	$images_count_custom = get_option( 'si_external_image_images_count_custom', '200' );
@@ -231,7 +231,7 @@ function vr_import_external_images_per_post() {
 
 	if ( is_array( $external_images ) && count( $external_images ) > 0 ) {
 
-		$html = '<div class="misc-pub-section " id="vr_external-images" style="background-color: #FFFFE0; border-color: #E6DB55;">';
+		$html = '<div class="misc-pub-section " id="si_external-images" style="background-color: #FFFFE0; border-color: #E6DB55;">';
 		$html .= '<h4>You have (' . count( $external_images ) . ') files that can be imported and link updates that can be made.</h4>';
 
 		foreach ( $external_images as $external_image ) {
@@ -253,8 +253,8 @@ function vr_import_external_images_per_post() {
 			$html .= '<ul class="pdf-list">' . $pdfs . '</ul>';
 		}
 
-		$html .= '<input type="hidden" name="vr_import_external_images_nonce" id="vr_import_external_images_nonce" value="' . wp_create_nonce( 'vr_import_external_images_nonce' ) . '" />';
-		$html .= '<p><input type="checkbox" name="vr_import_external_images" id="vr_import_external_images" value="vr_import-' . $_GET['post'] . '" /> Import External Media?</p>';
+		$html .= '<input type="hidden" name="si_import_external_images_nonce" id="si_import_external_images_nonce" value="' . wp_create_nonce( 'si_import_external_images_nonce' ) . '" />';
+		$html .= '<p><input type="checkbox" name="si_import_external_images" id="si_import_external_images" value="si_import-' . $_GET['post'] . '" /> Import External Media?</p>';
 		$html .= '<p class="howto">Only ' . $images_count_custom . ' image and link changes will be made at a time to keep things from taking too long.</p>';
 
 		$html .= '</div>';
@@ -263,7 +263,7 @@ function vr_import_external_images_per_post() {
 
 }
 
-function vr_is_allowed_file( $file ) {
+function si_is_allowed_file( $file ) {
 	$file = strtok( $file, '?' ); //strip off querystring
 
 	$allowed = array( '.jpg', '.jpe', '.jpeg', '.png', '.bmp', '.gif', '.pdf' );
@@ -283,7 +283,7 @@ function si_external_image_import_images( $post_id, $force = FALSE ) {
 
 	global $pagenow;
 
-	if ( get_transient( 'vr_saving_imported_images_' . $post_id ) ) {
+	if ( get_transient( 'si_saving_imported_images_' . $post_id ) ) {
 		return;
 	}
 
@@ -291,8 +291,8 @@ function si_external_image_import_images( $post_id, $force = FALSE ) {
 		return;
 	}
 
-	if ( isset( $_REQUEST['vr_import_external_images_nonce'] ) ) {
-		if ( $force == FALSE && ! wp_verify_nonce( $_REQUEST['vr_import_external_images_nonce'], 'vr_import_external_images_nonce' ) ) {
+	if ( isset( $_REQUEST['si_import_external_images_nonce'] ) ) {
+		if ( $force == FALSE && ! wp_verify_nonce( $_REQUEST['si_import_external_images_nonce'], 'si_import_external_images_nonce' ) ) {
 			return;
 		}
 	}
@@ -301,7 +301,7 @@ function si_external_image_import_images( $post_id, $force = FALSE ) {
 		return;
 	}
 
-	if ( $force == FALSE && $pagenow == 'post.php' && ! isset( $_POST['vr_import_external_images'] ) ) {
+	if ( $force == FALSE && $pagenow == 'post.php' && ! isset( $_POST['si_import_external_images'] ) ) {
 		return;
 	}
 
@@ -322,7 +322,7 @@ function si_external_image_import_images( $post_id, $force = FALSE ) {
 	$count = 0;
 	$image_total = count( $imgs );
 	for ( $i = 0; $i < $image_total; $i ++ ) {
-		if ( isset( $imgs[ $i ] ) && vr_is_allowed_file( $imgs[ $i ] ) && $count < $images_count_custom ) {
+		if ( isset( $imgs[ $i ] ) && si_is_allowed_file( $imgs[ $i ] ) && $count < $images_count_custom ) {
 			$new_img = si_external_image_sideload( $imgs[ $i ], $post_id ); // $new_img = Localhost URI of the downloaded image
 			if ( $new_img ) {
 				$content  = str_replace( $imgs[ $i ], $new_img, $content );
@@ -334,7 +334,7 @@ function si_external_image_import_images( $post_id, $force = FALSE ) {
 	}
 
 	if ( $replaced ) {
-		set_transient( 'vr_saving_imported_images_' . $post_id, 'true', HOUR_IN_SECONDS );
+		set_transient( 'si_saving_imported_images_' . $post_id, 'true', HOUR_IN_SECONDS );
 		$update_post                 = array();
 		$update_post['ID']           = $post_id;
 		$update_post['post_content'] = $content;
@@ -417,7 +417,7 @@ function si_external_image_sideload( $file, $post_id, $desc = NULL ) {
         error_log( 'Download file: ' . $downloadUrl );
 		$file_array             = array();
 		$file_array['name']     = basename( strtok( $matches[0], '?' ) );
-		$file_array['tmp_name'] = download_url( $downloadUrl );
+		$file_array['tmp_name'] = si_download_url( $downloadUrl );
 
 		// If error storing temporarily, unlink.
 		if ( is_wp_error( $file_array['tmp_name'] ) ) {
@@ -600,7 +600,7 @@ function si_external_image_options() {
 	?>
 
     <style type="text/css">
-        #vr_import_posts #processing {
+        #si_import_posts #processing {
             background: url(/wp-admin/images/spinner.gif) top left transparent no-repeat;
             padding: 0 0 0 23px;
         }
@@ -701,7 +701,7 @@ function si_external_image_options() {
         </div>
     </form>
 
-    <div id="vr_import_all_images"
+    <div id="si_import_all_images"
          style="float:left; margin:0px; padding:20px; display:block;">
 
         <h2 style="margin-top: 0px;">Process all posts</h2>
@@ -733,8 +733,8 @@ function si_external_image_options() {
 		$import .= '<button class="button-primary" onclick="si_external_images_import_images();">Import Images Now</button>';
 		$import .= '</p>';
 
-		$import .= '<div id="vr_import_posts" style="display:none padding:25px 10px 10px 80px;"></div>';
-		$import .= '<div id="vr_import_results" style="display:none"></div>';
+		$import .= '<div id="si_import_posts" style="display:none padding:25px 10px 10px 80px;"></div>';
+		$import .= '<div id="si_import_results" style="display:none"></div>';
 
 		$import .= '</div>';
 
@@ -748,7 +748,7 @@ function si_external_image_options() {
 				$html .= '<p class="howto">Refresh this page to try again if the import process stalls.</p>';
 
 				$html .= $import;
-				$html .= '<div id="vr_posts_list" style="padding: 0 5px; margin: 0px; clear:both; ">';
+				$html .= '<div id="si_posts_list" style="padding: 0 5px; margin: 0px; clear:both; ">';
 				$html .= '<h4>Here is a look at posts that contain external Images:</h4>';
 
 				$html .= '<table class="widefat">';
