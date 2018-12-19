@@ -60,8 +60,9 @@ if ( $posts_count_custom <= 0 || $posts_count_custom >= 501 ) {
 	$posts_count_custom = 500;
 }
 
-require_once( ABSPATH . 'wp-admin/includes/file.php' );
-require_once( ABSPATH . 'wp-admin/includes/media.php' );
+require_once ABSPATH . 'wp-admin/includes/file.php';
+require_once ABSPATH . 'wp-admin/includes/media.php';
+require_once './vendor/autoload.php';
 
 add_action( 'admin_menu', 'si_external_image_menu' );
 add_action( 'admin_init', 'si_external_image_admin_init' );
@@ -351,6 +352,43 @@ function si_external_image_import_images( $post_id, $force = FALSE ) {
 
 }
 
+function si_download_url( $url ) {
+
+	if ( ! $url ) {
+		return new WP_Error('http_no_url', __('Invalid URL Provided.'));
+	}
+
+	$url_filename = basename( parse_url( $url, PHP_URL_PATH ) );
+	$temp_file_name = wp_tempnam( $url_filename );
+	if ( ! $temp_file_name ) {
+		return new WP_Error('http_no_file', __('Could not create Temporary file.'));
+	}
+
+	try {
+		$client = new GuzzleHttp\Client();
+		$response = $client->get( $url, array(
+			'sink' => $temp_file_name,
+			'timeout' => 300,
+			'headers' => array(
+				'Cache-Control' => 'no-cache',
+				'User-Agent' => 'import-external-images/v1.0',
+				'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+				'Accept-Encoding' => 'gzip, deflate, br',
+			),
+		) );
+	} catch (Exception $exception) {
+		unlink( $temp_file_name );
+		return new WP_Error($exception->getCode(), $exception->getMessage());
+	}
+
+	if ( 200 !== $response->getStatusCode() ){
+		unlink( $temp_file_name );
+		return new WP_Error( $response->getStatusCode(), $response->getBody()->getContents() );
+	}
+
+	return $temp_file_name;
+}
+
 /*
 * Handle importing of external image
 * Most of this taken from WordPress function 'media_sideload_image'
@@ -361,7 +399,7 @@ function si_external_image_import_images( $post_id, $force = FALSE ) {
 * @return string - just the image url on success, false on failure
 */
 function si_external_image_sideload( $file, $post_id, $desc = NULL ) {
-
+	error_log( 'Image file: ' . $file );
 	if ( ! empty( $file ) ) {
 
 		// Set variables for storage, fix file filename for query strings.
@@ -376,13 +414,16 @@ function si_external_image_sideload( $file, $post_id, $desc = NULL ) {
 			$scheme      = ( ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] === 443 ) ? 'https' : 'http' );
 			$downloadUrl = $scheme . ':' . $downloadUrl;
 		}
-
+        error_log( 'Download file: ' . $downloadUrl );
 		$file_array             = array();
 		$file_array['name']     = basename( strtok( $matches[0], '?' ) );
 		$file_array['tmp_name'] = download_url( $downloadUrl );
 
 		// If error storing temporarily, unlink.
 		if ( is_wp_error( $file_array['tmp_name'] ) ) {
+		    /** @var \WP_Error $error */
+		    $error = $file_array['tmp_name'];
+			error_log( 'Error: ' . $error->get_error_message() );
 			@unlink( $file_array['tmp_name'] );
 			$file_array['tmp_name'] = '';
 

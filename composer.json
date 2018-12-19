@@ -1,0 +1,13 @@
+{
+    "name": "showit/import-external-images",
+    "type": "wordpress-plugin",
+    "require": {
+        "guzzlehttp/guzzle": "^6.3"
+    },
+    "authors": [
+        {
+            "name": "Edwin Smith",
+            "email": "edwin@showit.co"
+        }
+    ]
+}
