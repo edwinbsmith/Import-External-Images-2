@@ -399,7 +399,7 @@ function si_download_url( $url ) {
 * @return string - just the image url on success, false on failure
 */
 function si_external_image_sideload( $file, $post_id, $desc = NULL ) {
-	error_log( 'Image file: ' . $file );
+
 	if ( ! empty( $file ) ) {
 
 		// Set variables for storage, fix file filename for query strings.
@@ -414,16 +414,15 @@ function si_external_image_sideload( $file, $post_id, $desc = NULL ) {
 			$scheme      = ( ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] === 443 ) ? 'https' : 'http' );
 			$downloadUrl = $scheme . ':' . $downloadUrl;
 		}
-        error_log( 'Download file: ' . $downloadUrl );
+
 		$file_array             = array();
 		$file_array['name']     = basename( strtok( $matches[0], '?' ) );
 		$file_array['tmp_name'] = si_download_url( $downloadUrl );
 
 		// If error storing temporarily, unlink.
 		if ( is_wp_error( $file_array['tmp_name'] ) ) {
-		    /** @var \WP_Error $error */
-		    $error = $file_array['tmp_name'];
-			error_log( 'Error: ' . $error->get_error_message() );
+
+			// error_log( 'Error ( ' . $file_array['tmp_name']->get_error_code() . ' ): ' . $file_array['tmp_name']->get_error_message() );
 			@unlink( $file_array['tmp_name'] );
 			$file_array['tmp_name'] = '';
 
