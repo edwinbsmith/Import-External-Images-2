@@ -73,6 +73,8 @@ add_action( 'admin_notices', 'si_external_images_bulk_resize_message', 90 );
 add_action( 'wp_ajax_si_external_image_get_backcatalog_ajax', 'si_external_image_get_backcatalog_ajax' );
 add_action( 'wp_ajax_si_external_image_import_all_ajax', 'si_external_image_import_all_ajax' );
 
+add_filter( 'getimagesize_mimes_to_exts', 'si_match_webp_to_jpeg' );
+
 
 function si_external_image_admin_init() {
 	global $pagenow;
@@ -264,19 +266,12 @@ function si_import_external_images_per_post() {
 }
 
 function si_is_allowed_file( $file ) {
-	$file = strtok( $file, '?' ); //strip off querystring
 
-	$allowed = array( '.jpg', '.jpe', '.jpeg', '.png', '.bmp', '.gif', '.pdf' );
+	$uri   = strtok( $file, '?' ); //strip the querystring if it has one
+	$url_parts  = parse_url( $uri );
+	$path_parts = pathinfo( $url_parts['path'] );
 
-	foreach ( $allowed as $ext ) {
-		$c = strlen( $ext );
-		if ( substr( strtolower( $file ), - $c ) == $ext ) {
-			return TRUE;
-		}
-	}
-
-	return FALSE;
-
+	return si_has_valid_path_extension( $path_parts['extension'] );
 }
 
 function si_external_image_import_images( $post_id, $force = FALSE ) {
@@ -415,14 +410,20 @@ function si_external_image_sideload( $file, $post_id, $desc = NULL ) {
 			$downloadUrl = $scheme . ':' . $downloadUrl;
 		}
 
+		// If necessary, shorten long file names
+		$name = basename( $matches[0] );
+		if ( 100 < strlen( $name ) ) {
+			$name = substr( $name, 0, 100 ) . '.' . $matches[1];
+		}
+
 		$file_array             = array();
-		$file_array['name']     = basename( strtok( $matches[0], '?' ) );
+		$file_array['name']     = basename( strtok( $name, '?' ) );
 		$file_array['tmp_name'] = si_download_url( $downloadUrl );
 
 		// If error storing temporarily, unlink.
 		if ( is_wp_error( $file_array['tmp_name'] ) ) {
 
-			// error_log( 'Error ( ' . $file_array['tmp_name']->get_error_code() . ' ): ' . $file_array['tmp_name']->get_error_message() );
+			error_log( 'Error ( ' . $file_array['tmp_name']->get_error_code() . ' ): ' . $file_array['tmp_name']->get_error_message() );
 			@unlink( $file_array['tmp_name'] );
 			$file_array['tmp_name'] = '';
 
@@ -492,10 +493,9 @@ function si_external_image_get_img_tags( $post_id ) {
 		if ( $uriCheck != '' && preg_match( '/^https?:\/\//', $uri ) ) {
 			//make sure it's external
 			if ( $s != substr( $uriCheck, 0, strlen( $s ) ) && ( ! isset( $mapped ) || $mapped != substr( $uriCheck, 0, strlen( $mapped ) ) ) ) {
-				$path_parts['extension'] = ( isset( $path_parts['extension'] ) ) ? strtolower( $path_parts['extension'] ) : FALSE;
-				if ( $path_parts['extension'] == 'gif' || $path_parts['extension'] == 'jpg' || $path_parts['extension'] == 'jpeg' || $path_parts['extension'] == 'bmp' || $path_parts['extension'] == 'png' || $path_parts['extension'] == 'pdf' ) {
-					$result[] = $uri;
-				}
+			    if ( si_has_valid_path_extension( $path_parts['extension'] ) ) {
+			        $result[] = $uri;
+                }
 			}
 		}
 	}
@@ -792,4 +792,43 @@ function si_external_image_options() {
 
     </div>
 	<?php
+}
+
+function si_match_webp_to_jpeg( $extensions ) {
+    return $extensions + array( 'image/webp' => 'jpg' );
+}
+
+/**
+ * @param $extension
+ *
+ * @return bool
+ */
+function si_has_valid_path_extension( $extension ) {
+
+    $valid_extensions = array(
+        'gif',
+        'jpg',
+        'jpeg',
+        'bmp',
+        'png',
+        'pdf',
+    );
+
+    if ( ! isset( $extension ) ) {
+        return FALSE;
+    }
+
+    $extension = strtolower( $extension );
+
+    if ( in_array( $extension, $valid_extensions ) ) {
+        return TRUE;
+    }
+
+    foreach ( $valid_extensions as $valid_extension ) {
+        if ( strpos( $extension, $valid_extension ) === 0 ) {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
 }
